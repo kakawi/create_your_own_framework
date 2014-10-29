@@ -26,7 +26,13 @@ $context->fromRequest($request);
 $matcher = new Routing\Matcher\UrlMatcher($routes, $context);
 $resolver = new HttpKernel\Controller\ControllerResolver();
 
-$framework = new Simplex\Framework($matcher, $resolver);
+use Symfony\Component\EventDispatcher\EventDispatcher;
+
+$dispatcher = new EventDispatcher();
+$dispatcher->addListener('response', array(new Simplex\ContentLengthListener(), 'onResponse'), -255);
+$dispatcher->addListener('response', array(new Simplex\GoogleListener(), 'onResponse'));
+
+$framework = new Simplex\Framework($dispatcher, $matcher, $resolver);
 $response = $framework->handle($request);
 
 $response->send();
