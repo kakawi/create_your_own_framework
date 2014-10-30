@@ -33,6 +33,11 @@ $dispatcher->addListener('response', array(new Simplex\ContentLengthListener(), 
 $dispatcher->addListener('response', array(new Simplex\GoogleListener(), 'onResponse'));
 
 $framework = new Simplex\Framework($dispatcher, $matcher, $resolver);
+
+use Symfony\Component\HttpKernel\HttpCache\HttpCache;
+use Symfony\Component\HttpKernel\HttpCache\Store;
+$framework = new HttpCache($framework, new Store(__DIR__.'/../cache'));
+
 $response = $framework->handle($request);
 
 $response->send();

@@ -17,7 +17,7 @@ class GoogleListener
             return;
         }
 
-        $response->setContent($response->getContent().'GA CODE');
+        $response->setContent($response->getContent().' GA CODE');
     }
 
     public static function getSubscribedEvents()
