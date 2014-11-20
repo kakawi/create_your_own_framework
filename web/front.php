@@ -2,34 +2,46 @@
 
 // example.com/web/front.php
 
+class Person {
+    function __get($property) {
+        $method = "get{$property}";
+        if (method_exists($this, $method)) {
+            return $this->$method();
+        }
+    }
+
+    function getName(){
+        return "Ivan";
+    }
+}
+
+$p = new Person();
+print $p->name;
+
 require_once __DIR__.'/../vendor/autoload.php';
 
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing;
-use Symfony\Component\HttpKernel;
-use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\DependencyInjection\Reference;
+
+$routes = include __DIR__.'/../src/app.php';
+$sc = include __DIR__.'/../src/container.php';
 
 $request = Request::createFromGlobals();
-$routes = include __DIR__.'/../src/app.php';
 
-$context = new Routing\RequestContext();
-$matcher = new Routing\Matcher\UrlMatcher($routes, $context);
-$resolver = new HttpKernel\Controller\ControllerResolver();
+$response = $sc->get('framework')->handle($request);
+$sc->register('listener.string_response', 'Simplex\StringResponseListener');
+$sc->getDefinition('dispatcher')
+    ->addMethodCall('addSubscriber', array(new Reference('listener.string_response')))
+;
 
-$dispatcher = new EventDispatcher();
-$dispatcher->addSubscriber(new HttpKernel\EventListener\RouterListener($matcher));
+$sc->setParameter('charset', 'UTF-8');
+$sc->register('listener.response', 'Symfony\Component\HttpKernel\EventListener\ResponseListener')
+    ->setArguments(array('%charset%'))
+;
 
-$listener = new HttpKernel\EventListener\ExceptionListener('Calendar\\Controller\\ErrorController::exceptionAction');
-$dispatcher->addSubscriber($listener);
-$dispatcher->addSubscriber(new Simplex\StringResponseListener());
-
-$framework = new Simplex\Framework($dispatcher, $resolver);
-
-use Symfony\Component\HttpKernel\HttpCache\HttpCache;
-use Symfony\Component\HttpKernel\HttpCache\Store;
-$framework = new HttpCache($framework, new Store(__DIR__.'/../cache'));
-
-$response = $framework->handle($request);
+$sc->setParameter('routes', include __DIR__.'/../src/app.php');
+$sc->register('matcher', 'Symfony\Component\Routing\Matcher\UrlMatcher')
+    ->setArguments(array('%routes%', new Reference('context')))
+;
 
 $response->send();
